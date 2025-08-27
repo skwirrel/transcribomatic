@@ -6,6 +6,7 @@ node_modules/
 
 # Config with secrets
 config/config.php
+public/signedModel.js
 
 # Old/backup audio files
 public/audio_old/
