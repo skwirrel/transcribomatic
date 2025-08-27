@@ -2,7 +2,7 @@
 
 Real-time speech transcription with authentication, usage tracking, and AI-generated visual aids.
 
-**Copyright (C) 2025 Ben Jefferson**
+**Copyright © 2025 Ben Jefferson**
 
 ## Features
 
