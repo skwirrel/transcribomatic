@@ -52,12 +52,18 @@ Real-time speech transcription with authentication, usage tracking, and AI-gener
    mysql -u root -p < scripts/database_schema.sql
    ```
 
-4. **Configure your web server**
+4. **Generate signed model parameters**
+   ```bash
+   php scripts/signModel.php gpt-4o-realtime-preview
+   ```
+   This creates the `public/signedModel.js` file required for secure API access.
+
+5. **Configure your web server**
    - Point document root to the `public/` directory
    - Ensure HTTPS is enabled (required for microphone access)
    - Enable PHP and set appropriate permissions
 
-5. **Generate management tokens**
+6. **Generate management tokens**
    ```bash
    php scripts/generateTokens.php 5
    ```
