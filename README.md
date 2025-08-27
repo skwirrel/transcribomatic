@@ -2,6 +2,8 @@
 
 Real-time speech transcription with authentication, usage tracking, and AI-generated visual aids.
 
+**Copyright (C) 2025 Ben Jefferson**
+
 ## Features
 
 - 🎤 **Real-time speech transcription** using OpenAI's Realtime API via WebRTC
