@@ -4,6 +4,8 @@
 
 **Copyright © 2025 Ben Jefferson**
 
+![Transcribomatic Screenshot](screenshot.png)
+
 ## Features
 
 - 🎤 **Real-time speech transcription** using OpenAI's Realtime API via WebRTC
