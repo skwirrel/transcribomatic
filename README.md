@@ -10,10 +10,8 @@
 - 🔐 **Multi-tenant authentication** with HMAC-signed tokens
 - 👥 **User management** with configurable features per user
 - 💰 **Cost tracking & limits** with $2.00 weekly spending caps per user
-- 📊 **Privacy-first analytics** - tracks word counts, not actual transcription text
 - 🖼️ **AI-generated pictograms** using DALL-E for visual communication aids
 - 📱 **Responsive design** optimized for mobile and desktop
-- ⚡ **High performance** with optimized database indexes and UNIX timestamps
 
 ## Architecture
 
