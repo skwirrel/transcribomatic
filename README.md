@@ -192,7 +192,3 @@ This project is licensed under the GNU General Public License v3.0 - see the [LI
 ## Support
 
 For issues and questions, please use the GitHub issue tracker.
-
----
-
-**Built with ❤️ using OpenAI's Realtime API and modern web technologies.**
