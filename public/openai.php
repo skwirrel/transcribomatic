@@ -45,7 +45,7 @@ try {
     }
     
     // Get and validate model parameter
-    $model = 'gpt-4o-mini-realtime-preview'; // Default model
+    $model = 'gpt-4o-realtime-preview'; // Default model
     $requestData = null;
     
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {

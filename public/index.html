@@ -235,6 +235,7 @@
     </style>
 </head>
 <body>
+    <script src="signedModel.js"></script>
     <div class="controls">
         <button id="startBtn" class="btn btn-start">Start</button>
         <button id="stopBtn" class="btn btn-stop" disabled>Stop</button>
@@ -461,8 +462,8 @@
             
             async getSessionToken() {
                 try {
-                    // Use pre-signed model parameter (signed offline for security) 
-                    const signedModel = 'gpt-4o-realtime-preview.2309fdd5927589d3498897ebecedfa0982bc7b140157469197683282c8e59ad1';
+                    // Use pre-signed model parameter (loaded from separate file for security) 
+                    const signedModel = SIGNED_MODEL;
                     
                     const response = await fetch('./openai.php', {
                         method: 'POST',
