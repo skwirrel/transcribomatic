@@ -1,6 +1,6 @@
 # Transcribomatic
 
-**Transcribomatic** is a web-based real-time speech transcription application that converts spoken language into text using OpenAI's Realtime API. Built for multi-tenant use, it provides secure token-based authentication, comprehensive usage tracking with weekly cost limits, and AI-generated visual aids to enhance communication. The system prioritizes privacy by tracking only word counts rather than actual speech content, making it ideal for individuals, educators, and organizations who need reliable speech-to-text functionality with built-in cost controls and user management.
+**Transcribomatic** helps people with temporary hearing loss or those who benefit from visual communication aids. Simply speak into your microphone and see your words appear instantly on screen, accompanied by AI-generated pictograms that illustrate what's being said. Designed for individuals experiencing hearing difficulties or anyone who finds visual representations helpful for understanding spoken language.
 
 **Copyright © 2025 Ben Jefferson**
 
