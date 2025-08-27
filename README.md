@@ -2,9 +2,7 @@
 
 **Transcribomatic** helps people with temporary hearing loss or those who benefit from visual communication aids. Simply speak into your microphone and see your words appear instantly on screen, accompanied by AI-generated pictograms that illustrate what's being said. Designed for individuals experiencing hearing difficulties or anyone who finds visual representations helpful for understanding spoken language.
 
-**Copyright © 2025 Ben Jefferson**
-
-![Transcribomatic Screenshot](screenshot.png)
+<img src="screenshot.png" alt="Transcribomatic Screenshot" style="max-width: 250px;">
 
 ## Features
 
@@ -190,6 +188,8 @@ Current OpenAI API pricing (configurable in `config.php`):
 ## License
 
 This project is licensed under the GNU General Public License v3.0 - see the [LICENSE](LICENSE) file for details.
+
+**Copyright © 2025 Ben Jefferson**
 
 ## Support
 
