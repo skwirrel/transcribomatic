@@ -1,0 +1,931 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Transcription</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #f5f5f5;
+            height: 100vh; /* Fallback */
+            height: 100dvh; /* Dynamic viewport height - adapts to address bar */
+            display: flex;
+            flex-direction: column;
+            padding: 10px;
+            margin: 0;
+            overflow: hidden;
+            box-sizing: border-box;
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            justify-content: center;
+            flex-wrap: nowrap;
+            margin-bottom: 15px;
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .btn {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            min-width: 80px;
+            flex-shrink: 1;
+        }
+
+        .btn-start {
+            background-color: #4CAF50;
+            color: white;
+        }
+
+        .btn-start:hover {
+            background-color: #45a049;
+        }
+
+        .btn-start:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+
+        .btn-stop {
+            background-color: #f44336;
+            color: white;
+        }
+
+        .btn-stop:hover {
+            background-color: #da190b;
+        }
+
+        .btn-stop:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+
+        .font-select {
+            padding: 12px 8px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            background: white;
+            min-width: 100px;
+            flex-shrink: 1;
+        }
+
+        .status {
+            text-align: center;
+            padding: 15px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 15px;
+            font-size: 18px;
+            font-weight: 500;
+        }
+
+        .status.connecting {
+            background-color: #fff3cd;
+            color: #856404;
+        }
+
+        .status.listening {
+            background-color: #d4edda;
+            color: #155724;
+        }
+
+        .status.idle {
+            background-color: #e2e3e5;
+            color: #383d41;
+        }
+
+        .status.error {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+
+        .transcription-container {
+            flex: 1;
+            position: relative;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            overflow: hidden;
+            min-height: 0;
+        }
+
+        .transcription {
+            height: 100%;
+            width: 100%;
+            padding: 20px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            overflow-y: auto;
+            background: transparent;
+        }
+
+        .transcription.font-small {
+            font-size: 16px;
+        }
+
+        .transcription.font-medium {
+            font-size: 20px;
+        }
+
+        .transcription.font-large {
+            font-size: 24px;
+        }
+
+        .transcription.font-xlarge {
+            font-size: 32px;
+        }
+
+        .utterance {
+            margin-bottom: 12px;
+            padding: 8px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        
+        .context-hints {
+            font-size: 0.85em;
+            font-style: italic;
+            color: #666;
+            margin-top: 4px;
+            line-height: 1.4;
+        }
+
+        .utterance:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+
+        .utterance.highlight {
+            background-color: #d4edda;
+            border-radius: 4px;
+            padding: 8px;
+            transition: background-color 3s ease-out;
+        }
+
+        .utterance.highlight.fade-out {
+            background-color: transparent;
+        }
+
+        .jump-to-end {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 25px;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0,123,255,0.3);
+            font-weight: 600;
+            opacity: 0;
+            transition: opacity 0.3s;
+            z-index: 10;
+        }
+
+        .jump-to-end.visible {
+            opacity: 1;
+        }
+
+        .jump-to-end:hover {
+            background-color: #0056b3;
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding: 5px;
+            }
+            
+            .controls {
+                gap: 5px;
+                padding: 10px;
+            }
+            
+            .btn {
+                padding: 10px 12px;
+                font-size: 14px;
+                min-width: 60px;
+            }
+            
+            .font-select {
+                padding: 10px 6px;
+                font-size: 14px;
+                min-width: 80px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="controls">
+        <button id="startBtn" class="btn btn-start">Start</button>
+        <button id="stopBtn" class="btn btn-stop" disabled>Stop</button>
+        <select id="fontSelect" class="font-select">
+            <option value="small">Small Text</option>
+            <option value="medium" selected>Medium Text</option>
+            <option value="large">Large Text</option>
+            <option value="xlarge">Extra Large Text</option>
+        </select>
+    </div>
+
+    <div id="status" class="status idle">Press Start when you need me</div>
+
+    <div class="transcription-container">
+        <div id="transcription" class="transcription font-medium">
+            <div class="utterance" style="color: #999; font-style: italic;">
+                Transcription will appear here when you start listening...
+            </div>
+        </div>
+        <button id="jumpToEnd" class="jump-to-end">Jump to End</button>
+    </div>
+
+    <script>
+        class LiveTranscription {
+            constructor() {
+                this.peerConnection = null;
+                this.dataChannel = null;
+                this.isListening = false;
+                this.isUserScrolling = false;
+                this.scrollTimeout = null;
+                this.audioElement = null;
+                this.currentResponseText = '';
+                this.responseInProgress = false;
+                this.pendingResponseRequest = false;
+                this.lastAudioActivity = null;
+                this.activityTimeout = null;
+                this.userToken = null;
+                this.userConfig = null;
+                this.lastResponseWordCount = 0;
+                
+                this.startBtn = document.getElementById('startBtn');
+                this.stopBtn = document.getElementById('stopBtn');
+                this.fontSelect = document.getElementById('fontSelect');
+                this.status = document.getElementById('status');
+                this.transcription = document.getElementById('transcription');
+                this.jumpToEnd = document.getElementById('jumpToEnd');
+                
+                this.initializeApp();
+            }
+            
+            async initializeApp() {
+                try {
+                    // Get token from URL parameters
+                    const urlParams = new URLSearchParams(window.location.search);
+                    this.userToken = urlParams.get('token');
+                    
+                    if (!this.userToken) {
+                        this.showError('No authentication token provided. Please use your personal access link.');
+                        return;
+                    }
+                    
+                    // Attempt login
+                    const response = await fetch(`openai.php?mode=login&token=${encodeURIComponent(this.userToken)}`);
+                    const result = await response.json();
+                    
+                    if (!result.success) {
+                        this.showError(result.error || 'Authentication failed');
+                        return;
+                    }
+                    
+                    this.userConfig = result.config;
+                    this.applyUserConfig();
+                    this.initializeEventListeners();
+                    
+                } catch (error) {
+                    console.error('Initialization error:', error);
+                    this.showError('Failed to initialize application. Please try again.');
+                }
+            }
+            
+            applyUserConfig() {
+                // Hide/show elements based on user configuration
+                if (!this.userConfig.showTranscription) {
+                    const transcriptionElement = document.getElementById('transcription');
+                    if (transcriptionElement) {
+                        transcriptionElement.style.display = 'none';
+                    }
+                }
+                
+                if (!this.userConfig.showParalanguage) {
+                    // We'll modify paralanguage display logic later in the response handling
+                }
+                
+                // Note: Image display is handled in the generatePictogram method
+            }
+            
+            showError(message) {
+                this.updateStatus(`Error: ${message}`, 'error');
+                this.startBtn.disabled = true;
+                this.stopBtn.disabled = true;
+            }
+            
+            initializeEventListeners() {
+                this.startBtn.addEventListener('click', () => this.start());
+                this.stopBtn.addEventListener('click', () => this.stop());
+                this.fontSelect.addEventListener('change', () => this.changeFontSize());
+                this.jumpToEnd.addEventListener('click', () => this.jumpToEndOfText());
+                
+                this.transcription.addEventListener('scroll', () => {
+                    this.handleScroll();
+                });
+            }
+            
+            async start() {
+                try {
+                    this.updateStatus('Requesting microphone access...', 'connecting');
+                    this.startBtn.disabled = true;
+                    
+                    this.updateStatus('Getting session token...', 'connecting');
+                    
+                    // Get ephemeral token from server
+                    const token = await this.getSessionToken();
+                    if (!token) {
+                        throw new Error('Failed to get session token');
+                    }
+                    
+                    this.updateStatus('Setting up WebRTC connection...', 'connecting');
+                    
+                    // Create WebRTC peer connection
+                    this.peerConnection = new RTCPeerConnection();
+                    
+                    // We don't need audio output since we only want text responses
+                    this.peerConnection.ontrack = (event) => {
+                        console.log('Received remote audio track (ignoring since we only want text)');
+                    };
+                    
+                    // Add local microphone track
+                    const mediaStream = await navigator.mediaDevices.getUserMedia({
+                        audio: {
+                            sampleRate: 24000,
+                            channelCount: 1,
+                            echoCancellation: true,
+                            noiseSuppression: true
+                        }
+                    });
+                    
+                    const audioTrack = mediaStream.getTracks()[0];
+                    this.peerConnection.addTrack(audioTrack, mediaStream);
+                    
+                    // Set up data channel for sending and receiving events
+                    this.dataChannel = this.peerConnection.createDataChannel('oai-events');
+                    
+                    this.dataChannel.onopen = () => {
+                        console.log('Data channel opened');
+                        this.configureSession();
+                    };
+                    
+                    this.dataChannel.onmessage = (event) => {
+                        // console.log('Received data channel message:', event.data);
+                        try {
+                            const message = JSON.parse(event.data);
+                            this.handleMessage(message);
+                        } catch (e) {
+                            console.error('Failed to parse data channel message:', e);
+                        }
+                    };
+                    
+                    this.dataChannel.onerror = (error) => {
+                        console.error('Data channel error:', error);
+                        this.updateStatus('Data channel error', 'error');
+                    };
+                    
+                    // Create offer and set local description
+                    const offer = await this.peerConnection.createOffer();
+                    await this.peerConnection.setLocalDescription(offer);
+                    
+                    this.updateStatus('Connecting to OpenAI...', 'connecting');
+                    
+                    // Send offer to OpenAI API
+                    const baseUrl = 'https://api.openai.com/v1/realtime';
+                    const model = 'gpt-4o-realtime-preview';
+                    
+                    const sdpResponse = await fetch(`${baseUrl}?model=${model}`, {
+                        method: 'POST',
+                        body: offer.sdp,
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'Content-Type': 'application/sdp'
+                        }
+                    });
+                    
+                    if (!sdpResponse.ok) {
+                        throw new Error(`SDP exchange failed: ${sdpResponse.status} ${sdpResponse.statusText}`);
+                    }
+                    
+                    const answerSdp = await sdpResponse.text();
+                    const answer = {
+                        type: 'answer',
+                        sdp: answerSdp
+                    };
+                    
+                    await this.peerConnection.setRemoteDescription(answer);
+                    
+                    console.log('WebRTC connection established');
+                    
+                    // Trigger a scroll to establish user gesture for mobile address bar hiding
+                    window.scrollTo(0, document.body.scrollHeight);
+                    
+                } catch (error) {
+                    console.error('Failed to start:', error);
+                    this.updateStatus('Failed to connect: ' + error.message, 'error');
+                    this.startBtn.disabled = false;
+                    this.cleanup();
+                }
+            }
+            
+            stop() {
+                this.isListening = false;
+                this.cleanup();
+                this.updateStatus('Press Start when you need me', 'idle');
+                this.startBtn.disabled = false;
+                this.stopBtn.disabled = true;
+            }
+            
+            async getSessionToken() {
+                try {
+                    // Use pre-signed model parameter (signed offline for security) 
+                    const signedModel = 'gpt-4o-realtime-preview.2309fdd5927589d3498897ebecedfa0982bc7b140157469197683282c8e59ad1';
+                    
+                    const response = await fetch('./openai.php', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            model: signedModel
+                        })
+                    });
+                    
+                    const data = await response.json();
+                    if (data.error) {
+                        throw new Error(data.error);
+                    }
+                    return data.session_token;
+                } catch (error) {
+                    console.error('Error getting session token:', error);
+                    return null;
+                }
+            }
+            
+            configureSession() {
+                const sessionConfig = {
+                    type: 'session.update',
+                    session: {
+                        modalities: ['text'],
+                        instructions: `You are a live transcription assistant for deaf and hard-of-hearing users. Listen to the English audio input and provide both accurate transcription AND paralanguage context. Please use markdown formatting in the transcription to show which words are emphasised.
+The context need not be whole sentences i.e. there is no need to start with "The speaker is..." or such like.
+These is no need to comment on in the context on background noise.
+Respond ONLY with valid JSON in this exact format: {"transcription": "the exact words spoken - use markdown formatting to convery emphasis", "context": "tone, emotion, volume, pace, emphasis, background sounds, or other audio cues that provide meaning beyond the words - keep this concise but informative", "simplified_utterance": "a stripped down version of the utterance - maximum 20 words"}. Always include all three fields even if context is minimal.`,
+                        input_audio_format: 'pcm16',
+                        turn_detection: {
+                            type: 'server_vad',
+                            threshold: 0.6,
+                            prefix_padding_ms: 300,
+                            silence_duration_ms: 800
+                        }
+                    }
+                };
+                
+                if (this.dataChannel && this.dataChannel.readyState === 'open') {
+                    this.dataChannel.send(JSON.stringify(sessionConfig));
+                    this.updateStatus('Listening for speech...', 'listening');
+                    this.stopBtn.disabled = false;
+                    this.isListening = true;
+                    this.resetActivityTimeout(); // Start the activity timeout
+                    console.log('Session configured for conversation mode via WebRTC data channel, now listening for audio');
+                } else {
+                    console.error('Data channel not ready for session configuration');
+                    this.updateStatus('Connection error', 'error');
+                }
+            }
+            
+            handleMessage(message) {
+                // console.log('Received message:', message.type, message);
+                
+                switch (message.type) {
+                    case 'session.updated':
+                        console.log('Session updated successfully');
+                        break;
+                        
+                    case 'input_audio_buffer.speech_started':
+                        console.log('Speech detected');
+                        this.updateStatus('Someone is speaking...', 'listening');
+                        this.resetActivityTimeout(); // Reset timeout when speech detected
+                        break;
+                        
+                    case 'input_audio_buffer.speech_stopped':
+                        console.log('Speech stopped, processing...');
+                        this.updateStatus('Processing speech...', 'connecting');
+                        break;
+                        
+                    case 'conversation.item.created':
+                        console.log('Conversation item created:', message.item);
+                        break;
+                        
+                    case 'response.created':
+                        console.log('Response created');
+                        this.currentResponseText = '';
+                        this.responseInProgress = true;
+                        break;
+                        
+                    case 'response.output_item.added':
+                        console.log('Response output item added:', message.item);
+                        break;
+                        
+                    case 'response.output_item.done':
+                        console.log('Response output item completed:', message.item);
+                        break;
+                        
+                    case 'response.content_part.added':
+                        console.log('Response content part added:', message.part);
+                        break;
+                        
+                    case 'response.content_part.done':
+                        // console.log('Response content part completed:', message.part);
+                        break;
+                        
+                    case 'response.text.delta':
+                        if (message.delta) {
+                            //console.log('Received text delta:', message.delta);
+                            this.currentResponseText = (this.currentResponseText || '') + message.delta;
+                        }
+                        break;
+                        
+                    case 'response.text.done':
+                        console.log('Text response completed:', this.currentResponseText);
+                        if (this.currentResponseText && this.currentResponseText.trim()) {
+                            this.addTranscription(this.currentResponseText.trim());
+                        }
+                        
+                        // Store word count for later usage logging (before clearing the text)
+                        this.lastResponseWordCount = this.currentResponseText ? 
+                            this.currentResponseText.trim().split(/\s+/).filter(word => word.length > 0).length : 0;
+                        
+                        this.currentResponseText = '';
+                        break;
+                        
+                    case 'response.done':
+                        console.log('**** Response completed ****');
+                        this.responseInProgress = false;
+                        this.updateStatus('Listening for speech...', 'listening');
+                        
+                        // Log transcription usage if we have token and usage data
+                        if (this.userToken && message.response && message.response.usage) {
+                            // Use the word count we stored from response.text.done
+                            const wordCount = this.lastResponseWordCount || 0;
+                            this.logUsageData(message.response.usage, wordCount);
+                            this.lastResponseWordCount = 0; // Clear it after use
+                        }
+                        
+                        // Process any pending response request
+                        if (this.pendingResponseRequest) {
+                            console.log('Processing pending response request');
+                            this.pendingResponseRequest = false;
+                            setTimeout(() => {
+                                this.createNewResponse();
+                            }, 50);
+                        }
+                        break;
+                        
+                    case 'response.cancelled':
+                        console.log('Response cancelled');
+                        this.responseInProgress = false;
+                        break;
+                        
+                    case 'input_audio_buffer.committed':
+                        console.log('Audio buffer committed');
+                        break;
+                        
+                    case 'input_audio_buffer.cleared':
+                        console.log('Audio buffer cleared');
+                        break;
+                        
+                    case 'conversation.item.input_audio_transcription.completed':
+                        console.log('Input audio transcription completed:', message.transcript);
+                        break;
+                        
+                    case 'conversation.item.input_audio_transcription.failed':
+                        console.log('Input audio transcription failed:', message.error);
+                        break;
+                        
+                    case 'error':
+                        console.error('OpenAI error:', message);
+                        this.responseInProgress = false; // Reset response state on error
+                        this.updateStatus('Error: ' + (message.error?.message || 'Unknown error'), 'error');
+                        break;
+                        
+                    default:
+                        console.log('Unhandled message type:', message.type);
+                        break;
+                }
+            }
+            
+            addTranscription(text) {
+                // Check if transcription display is enabled
+                if (!this.userConfig || !this.userConfig.showTranscription) {
+                    return; // Don't display transcription if disabled
+                }
+                
+                // Clear placeholder if it exists
+                const placeholder = this.transcription.querySelector('[style*="color: #999"]');
+                if (placeholder) {
+                    this.transcription.removeChild(placeholder);
+                }
+                
+                // Remove highlight from previous utterance
+                const previousHighlight = this.transcription.querySelector('.utterance.highlight');
+                if (previousHighlight) {
+                    previousHighlight.classList.remove('highlight', 'fade-out');
+                }
+                
+                let transcriptionText = text;
+                let contextHints = '';
+                let imageDescription = null;
+                
+                // Try to parse as JSON for enhanced transcription
+                try {
+                    const parsed = JSON.parse(text);
+                    if (parsed.transcription) {
+                        transcriptionText = parsed.transcription;
+                        contextHints = parsed.context || '';
+                        imageDescription = parsed.simplified_utterance || null;
+                    }
+                } catch (e) {
+                    // If not JSON, use as plain text transcription
+                    transcriptionText = text;
+                }
+                
+                // Create new utterance div
+                const utteranceDiv = document.createElement('div');
+                utteranceDiv.className = 'utterance highlight';
+                
+                // Add transcription text with markdown formatting
+                const textSpan = document.createElement('div');
+                textSpan.innerHTML = this.parseSimpleMarkdown(transcriptionText);
+                utteranceDiv.appendChild(textSpan);
+                
+                // Add context hints if available and user has paralanguage enabled
+                if (contextHints && this.userConfig && this.userConfig.showParalanguage) {
+                    const contextDiv = document.createElement('div');
+                    contextDiv.className = 'context-hints';
+                    contextDiv.textContent = contextHints;
+                    utteranceDiv.appendChild(contextDiv);
+                }
+                
+                // Add image if description is available (generateAndDisplayImage will check user config)
+                if (imageDescription) {
+                    this.generateAndDisplayImage(imageDescription, utteranceDiv);
+                }
+                
+                // Add to transcription container
+                this.transcription.appendChild(utteranceDiv);
+                
+                // Start fade-out after a brief moment
+                setTimeout(() => {
+                    utteranceDiv.classList.add('fade-out');
+                }, 100);
+                
+                // Remove highlight classes completely after fade completes
+                setTimeout(() => {
+                    utteranceDiv.classList.remove('highlight', 'fade-out');
+                }, 3200);
+                
+                if (!this.isUserScrolling) {
+                    // Scroll both the window and the transcription container
+                    window.scrollTo(0, document.body.scrollHeight);
+                    this.scrollToEnd();
+                }
+            }
+            
+            generateAndDisplayImage(description, utteranceDiv) {
+                // Check if user has image generation enabled
+                if (!this.userConfig || !this.userConfig.showImage) {
+                    return; // Don't generate images if disabled
+                }
+                
+                // Create image container
+                const imageContainer = document.createElement('div');
+                imageContainer.className = 'image-container';
+                imageContainer.style.cssText = `
+                    margin-top: 8px;
+                    width: 100%;
+                    display: flex;
+                    justify-content: center;
+                `;
+                
+                // Create placeholder while loading
+                const placeholder = document.createElement('div');
+                placeholder.style.cssText = `
+                    width: 100px;
+                    height: 100px;
+                    background: #f0f0f0;
+                    border-radius: 8px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    color: #666;
+                    font-size: 12px;
+                    text-align: center;
+                `;
+                placeholder.textContent = 'Generating image...';
+                imageContainer.appendChild(placeholder);
+                utteranceDiv.appendChild(imageContainer);
+                
+                // Generate image with authentication token
+                const imageUrl = `./generate_image.php?description=${encodeURIComponent(description)}&token=${encodeURIComponent(this.userToken)}`;
+                const img = new Image();
+                
+                img.onload = () => {
+                    img.style.cssText = `
+                        width: min(80dvw, 400px);
+                        height: min(80dvw, 400px);
+                        object-fit: cover;
+                        border-radius: 8px;
+                        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+                    `;
+                    imageContainer.replaceChild(img, placeholder);
+                    
+                    // Scroll to bottom after image loads if not user scrolling
+                    if (!this.isUserScrolling) {
+                        window.scrollTo(0, document.body.scrollHeight);
+                        this.scrollToEnd();
+                    }
+                };
+                
+                img.onerror = () => {
+                    placeholder.textContent = 'Image failed to load';
+                    placeholder.style.color = '#999';
+                };
+                
+                img.src = imageUrl;
+            }
+            
+            updateStatus(message, type) {
+                this.status.textContent = message;
+                this.status.className = `status ${type}`;
+            }
+            
+            changeFontSize() {
+                const size = this.fontSelect.value;
+                this.transcription.className = `transcription font-${size}`;
+            }
+            
+            handleScroll() {
+                const element = this.transcription;
+                const isAtBottom = element.scrollTop + element.clientHeight >= element.scrollHeight - 10;
+                
+                this.isUserScrolling = !isAtBottom;
+                
+                if (this.isUserScrolling) {
+                    this.jumpToEnd.classList.add('visible');
+                } else {
+                    this.jumpToEnd.classList.remove('visible');
+                }
+                
+                clearTimeout(this.scrollTimeout);
+                this.scrollTimeout = setTimeout(() => {
+                    if (isAtBottom) {
+                        this.isUserScrolling = false;
+                        this.jumpToEnd.classList.remove('visible');
+                    }
+                }, 1000);
+            }
+            
+            jumpToEndOfText() {
+                // Scroll both the window and the transcription container
+                window.scrollTo(0, document.body.scrollHeight);
+                this.scrollToEnd();
+                this.isUserScrolling = false;
+                this.jumpToEnd.classList.remove('visible');
+            }
+            
+            scrollToEnd() {
+                this.transcription.scrollTop = this.transcription.scrollHeight;
+            }
+            
+            resetActivityTimeout() {
+                this.lastAudioActivity = Date.now();
+                
+                // Clear any existing timeout
+                if (this.activityTimeout) {
+                    clearTimeout(this.activityTimeout);
+                }
+                
+                // Set 1-minute timeout
+                this.activityTimeout = setTimeout(() => {
+                    console.log('No audio activity for 1 minute, stopping session');
+                    this.updateStatus('Session stopped due to inactivity', 'idle');
+                    this.stop();
+                }, 60000); // 60 seconds
+            }
+            
+            parseSimpleMarkdown(text) {
+                // First escape HTML to prevent XSS
+                text = text.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                
+                // Handle **bold** formatting first
+                text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+                
+                // Handle *italic* formatting (single asterisks not part of double)
+                text = text.replace(/\*([^*]+?)\*/g, '<strong><em>$1</em></strong>');
+                
+                // Handle *underline* formatting 
+                text = text.replace(/_([^_]+?)_/g, '<ul>$1</ul>');
+
+                return text;
+            }
+            
+            requestResponse() {
+                console.log('Running requestResponse()');
+                if (this.dataChannel && this.dataChannel.readyState === 'open') {
+                    if (this.responseInProgress) {
+                        console.log('Response already in progress, marking as pending');
+                        this.pendingResponseRequest = true;
+                    } else {
+                        this.createNewResponse();
+                    }
+                } else {
+                    console.error('Data channel not available for response request');
+                }
+            }
+            
+            createNewResponse() {
+                // Create a response request to get the AI to process the audio input
+                const responseRequest = {
+                    type: 'response.create'
+                };
+                
+                console.log('Requesting response generation');
+                this.responseInProgress = true;
+                this.dataChannel.send(JSON.stringify(responseRequest));
+            }
+            
+            cleanup() {
+                if (this.dataChannel) {
+                    this.dataChannel.close();
+                    this.dataChannel = null;
+                }
+                
+                if (this.peerConnection) {
+                    this.peerConnection.close();
+                    this.peerConnection = null;
+                }
+                
+                // Clean up activity timeout
+                if (this.activityTimeout) {
+                    clearTimeout(this.activityTimeout);
+                    this.activityTimeout = null;
+                }
+                
+                this.isListening = false;
+            }
+            
+            async logUsageData(usage, wordCount = 0) {
+                try {
+                    // Send the raw usage JSON to the server for proper logging
+                    const response = await fetch('openai.php', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            mode: 'log_usage',
+                            token: this.userToken,
+                            usage: usage,
+                            wordCount: wordCount
+                        })
+                    });
+                    
+                    if (!response.ok) {
+                        console.error('Failed to log usage data:', response.status);
+                    }
+                } catch (error) {
+                    console.error('Error logging usage data:', error);
+                }
+            }
+        }
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            new LiveTranscription();
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,30 @@
+# Dependencies
+node_modules/
+
+# Build output
+# public/build/
+
+# Config with secrets
+config/config.php
+
+# Old/backup audio files
+public/audio_old/
+
+# Logs
+*.log
+
+# Environment files
+.env
+.env.local
+
+# IDE files
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
